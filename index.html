@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extractor de Paleta de Colores — loui61.com</title>
+  <meta name="description" content="Extrae los colores dominantes de cualquier fotografía al instante. Obtén los códigos HEX, RGB y porcentajes listos para usar en Lightroom, Photoshop o redes sociales." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --white:     #ffffff;
+      --off-white: #fafaf9;
+      --bg:        #f5f4f2;
+      --border:    #e8e5e0;
+      --border-hi: #d0cbc4;
+      --text:      #1a1815;
+      --text-mid:  #5a5650;
+      --text-dim:  #9a9590;
+      --radius:    3px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 64px 24px 100px;
+    }
+
+    /* ─── Header ─── */
+    .page-header {
+      margin-bottom: 48px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 40px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: clamp(32px, 5vw, 50px);
+      font-weight: 500;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      margin-bottom: 20px;
+    }
+
+    h1 em { font-style: italic; color: var(--text-mid); }
+
+    .intro {
+      font-size: 15px;
+      color: var(--text-mid);
+      max-width: 540px;
+      line-height: 1.75;
+    }
+
+    /* ─── Tool card ─── */
+    .tool-wrap {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 56px;
+    }
+
+    /* ─── Drop zone ─── */
+    #drop-zone {
+      padding: 56px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: background 0.18s;
+      text-align: center;
+    }
+
+    #drop-zone:hover { background: var(--off-white); }
+
+    #drop-zone.dragover {
+      background: var(--off-white);
+      outline: 2px dashed var(--border-hi);
+      outline-offset: -8px;
+    }
+
+    .drop-icon {
+      width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--bg);
+      margin-bottom: 4px;
+      transition: border-color 0.18s;
+    }
+
+    #drop-zone:hover .drop-icon { border-color: var(--border-hi); }
+
+    .drop-icon svg {
+      width: 22px; height: 22px;
+      stroke: var(--text-mid);
+      stroke-width: 1.4;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .drop-primary   { font-size: 15px; font-weight: 500; color: var(--text); }
+    .drop-secondary { font-size: 13px; color: var(--text-dim); }
+    .drop-formats   { font-size: 12px; color: var(--text-dim); letter-spacing: 0.05em; margin-top: 4px; }
+
+    #file-input { display: none; }
+
+    /* ─── Preview ─── */
+    #preview-wrap { display: none; }
+    #preview-wrap.visible { display: block; }
+
+    .img-container {
+      position: relative;
+      width: 100%;
+      max-height: 380px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    #preview-img {
+      width: 100%;
+      max-height: 380px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .img-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(250,250,249,0.82);
+      backdrop-filter: blur(3px);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .img-container:hover .img-overlay { opacity: 1; }
+
+    .change-btn {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+      border: 1px solid var(--border-hi);
+      background: var(--white);
+      padding: 9px 22px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .change-btn:hover { border-color: var(--text); }
+
+    .file-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    #file-name-label { color: var(--text-mid); }
+
+    .tool-divider { height: 1px; background: var(--border); }
+
+    /* ─── Color count control ─── */
+    #controls-wrap {
+      display: none;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      gap: 16px;
+    }
+
+    #controls-wrap.visible { display: flex; }
+
+    .ctrl-label {
+      font-size: 13px;
+      color: var(--text-mid);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .ctrl-label span {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-left: 6px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--text);
+      border: 2px solid var(--white);
+      box-shadow: 0 0 0 1px var(--border-hi);
+      transition: transform 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+    .range-bounds {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 0 0 0 0;
+      margin-top: -8px;
+    }
+
+    /* ─── Analyze button ─── */
+    #analyze-btn {
+      display: none;
+      width: 100%;
+      padding: 16px;
+      background: var(--text);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.18s;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    #analyze-btn.visible { display: flex; }
+    #analyze-btn:hover { opacity: 0.85; }
+    #analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-spinner {
+      display: none;
+      width: 14px; height: 14px;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    #analyze-btn.loading .btn-spinner { display: block; }
+    #analyze-btn.loading .btn-label  { opacity: 0.6; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Error ─── */
+    #error-box {
+      display: none;
+      padding: 14px 20px;
+      background: rgba(184,64,64,0.06);
+      border-top: 1px solid rgba(184,64,64,0.15);
+      font-size: 13px;
+      color: #b84040;
+      line-height: 1.65;
+    }
+
+    #error-box.visible { display: block; }
+
+    /* ─── Results ─── */
+    #results { display: none; margin-top: 2px; }
+    #results.visible { display: block; }
+
+    .results-inner {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    /* Gradient strip */
+    #gradient-strip {
+      height: 64px;
+      width: 100%;
+      display: block;
+    }
+
+    /* Paleta de swatches */
+    .swatches-section {
+      padding: 28px 28px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 18px;
+    }
+
+    #swatches-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cada fila de color */
+    .color-row {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 14px;
+      align-items: center;
+      animation: fadeRow 0.4s ease both;
+    }
+
+    @keyframes fadeRow {
+      from { opacity: 0; transform: translateX(-6px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .swatch-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.08);
+      flex-shrink: 0;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.15s;
+    }
+
+    .swatch-box:hover { transform: scale(1.06); }
+
+    .swatch-box .copy-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.22);
+      border-radius: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      font-size: 10px;
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .swatch-box:hover .copy-hint { opacity: 1; }
+
+    .color-info { display: flex; flex-direction: column; gap: 6px; }
+
+    .color-codes {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hex-val {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+      letter-spacing: 0.02em;
+    }
+
+    .hex-val:hover { border-color: var(--border-hi); }
+
+    .hex-val.copied { color: #2d7a5a; border-color: #2d7a5a; }
+
+    .rgb-val {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    /* Barra de porcentaje */
+    .pct-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pct-bar-track {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .pct-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      width: 0;
+      transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .pct-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      min-width: 36px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Toast de copiado */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--text);
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      padding: 10px 20px;
+      border-radius: var(--radius);
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Acciones */
+    .actions-section {
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    #retry-btn {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 9px 20px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    #retry-btn:hover { border-color: var(--border-hi); color: var(--text-mid); }
+
+    .copy-all-btn {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text);
+      background: none;
+      border: 1px solid var(--border-hi);
+      padding: 9px 20px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .copy-all-btn:hover { background: var(--off-white); }
+
+    /* ─── SEO content ─── */
+    .content-section {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .content-block { display: flex; flex-direction: column; gap: 12px; }
+
+    h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    h3 {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    p {
+      font-size: 15px;
+      color: var(--text-mid);
+      line-height: 1.8;
+    }
+
+    .divider { height: 1px; background: var(--border); }
+
+    .uses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .use-card {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .use-card h3 { font-size: 13px; }
+    .use-card p  { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+    .faq { display: flex; flex-direction: column; }
+
+    .faq-item {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .faq-item:last-child { border-bottom: none; }
+    .faq-item h3 { margin-bottom: 8px; }
+    .faq-item p  { font-size: 14px; }
+
+    /* ─── Footer ─── */
+    .page-footer {
+      margin-top: 64px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .page-footer p   { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+    .page-footer a   { color: var(--text-mid); text-decoration: none; border-bottom: 1px solid var(--border); transition: border-color 0.15s; }
+    .page-footer a:hover { border-color: var(--text-mid); }
+
+    /* ─── Entrada ─── */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-header     { animation: fadeSlideUp 0.45s ease both; }
+    .tool-wrap       { animation: fadeSlideUp 0.45s 0.08s ease both; }
+    .content-section { animation: fadeSlideUp 0.45s 0.16s ease both; }
+
+    /* ─── Canvas oculto ─── */
+    #hidden-canvas { display: none; }
+
+    @media (max-width: 480px) {
+      .page          { padding: 40px 16px 72px; }
+      #drop-zone     { padding: 40px 20px; }
+      .swatches-section { padding: 20px 16px 16px; }
+      .actions-section  { padding: 14px 16px; }
+      #controls-wrap    { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="hidden-canvas"></canvas>
+<div id="toast">Copiado al portapapeles</div>
+
+<div class="page">
+
+  <!-- ─── Header ─── -->
+  <header class="page-header">
+    <p class="eyebrow">Herramienta gratuita — loui61.com</p>
+    <h1>Extrae la paleta de colores<br>de <em>cualquier fotografía</em></h1>
+    <p class="intro">Sube una imagen y obtén al instante los colores dominantes con sus códigos HEX, valores RGB y porcentaje de presencia. Ideal para edición en Lightroom, identidad visual y redes sociales.</p>
+  </header>
+
+  <!-- ─── Tool ─── -->
+  <div class="tool-wrap">
+
+    <!-- Drop zone -->
+    <div id="drop-zone" role="button" tabindex="0" aria-label="Sube una imagen para extraer su paleta">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="1.5"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+      </div>
+      <p class="drop-primary">Arrastra tu imagen aquí</p>
+      <p class="drop-secondary">o haz clic para seleccionar un archivo</p>
+      <p class="drop-formats">JPG · PNG · WEBP · hasta 20 MB</p>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" />
+    </div>
+
+    <!-- Preview -->
+    <div id="preview-wrap">
+      <div class="img-container">
+        <img id="preview-img" src="" alt="Vista previa" crossorigin="anonymous" />
+        <div class="img-overlay">
+          <button class="change-btn" id="change-btn">Cambiar imagen</button>
+        </div>
+      </div>
+      <div class="file-bar">
+        <span id="file-name-label">—</span>
+        <span id="file-size-label">—</span>
+      </div>
+    </div>
+
+    <div class="tool-divider"></div>
+
+    <!-- Control de cantidad -->
+    <div id="controls-wrap">
+      <div style="display:flex;flex-direction:column;gap:2px;flex:1">
+        <p class="ctrl-label">Colores a extraer: <span id="count-display">6</span></p>
+        <input type="range" id="color-count" min="3" max="12" value="6" step="1" aria-label="Número de colores" />
+        <div class="range-bounds"><span>3</span><span>12</span></div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-box" role="alert"></div>
+
+    <!-- Botón -->
+    <button id="analyze-btn" aria-label="Extraer paleta de colores">
+      <span class="btn-label">Extraer paleta</span>
+      <span class="btn-spinner" aria-hidden="true"></span>
+    </button>
+
+  </div>
+
+  <!-- ─── Resultados ─── -->
+  <div id="results" role="region" aria-live="polite" aria-label="Paleta de colores extraída">
+    <div class="results-inner">
+
+      <!-- Franja de gradiente -->
+      <canvas id="gradient-strip" height="64" aria-hidden="true"></canvas>
+
+      <!-- Swatches -->
+      <div class="swatches-section">
+        <div class="section-label">Paleta de colores</div>
+        <div id="swatches-grid"></div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="actions-section">
+        <button id="retry-btn">← Nueva imagen</button>
+        <button class="copy-all-btn" id="copy-all-btn">Copiar todos los HEX</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── SEO Content ─── -->
+  <div class="content-section">
+
+    <div class="divider"></div>
+
+    <div class="content-block">
+      <h2>¿Para qué sirve extraer<br>la paleta de una foto?</h2>
+      <p>Cada fotografía tiene una identidad cromática que va más allá de lo que el ojo percibe de forma consciente. Conocer los códigos exactos de esos colores te da un control preciso sobre tu flujo de trabajo creativo: desde replicar un mood en Lightroom hasta construir una identidad visual coherente en redes sociales.</p>
+
+      <div class="uses-grid">
+        <div class="use-card">
+          <h3>Edición en Lightroom</h3>
+          <p>Replica el look de cualquier foto trabajando con los valores exactos en HSL y curvas de tono.</p>
+        </div>
+        <div class="use-card">
+          <h3>Feed de Instagram</h3>
+          <p>Mantén coherencia cromática en tu feed extrayendo la paleta de tu mejor foto y aplicándola al resto.</p>
+        </div>
+        <div class="use-card">
+          <h3>Identidad de marca</h3>
+          <p>Extrae colores de imágenes que representen el mood de tu marca y úsalos en diseño gráfico.</p>
+        </div>
+        <div class="use-card">
+          <h3>Dirección de arte</h3>
+          <p>Usa paletas reales como referencia para planear sesiones fotográficas con paletas de vestuario y props.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="content-block">
+      <h2>Cómo funciona</h2>
+      <p>La herramienta analiza los píxeles de tu imagen directamente en el navegador, sin subir nada a ningún servidor. Usa un algoritmo de agrupación llamado k-means clustering que identifica los centros de color más representativos de la imagen, ponderados por frecuencia. El resultado es una paleta honesta que refleja los colores que realmente dominan la fotografía, no solo los más brillantes o saturados.</p>
+      <p>Todo el procesamiento ocurre en tu dispositivo. Tu imagen nunca sale de tu navegador.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="content-block">
+      <h2>Preguntas frecuentes</h2>
+      <div class="faq">
+        <div class="faq-item">
+          <h3>¿Qué formatos de imagen acepta?</h3>
+          <p>JPG, PNG y WEBP de hasta 20 MB. Para mejores resultados usa la imagen en su resolución original o cercana a ella.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Mis fotos se guardan o se suben a algún servidor?</h3>
+          <p>No. Todo el análisis se realiza localmente en tu navegador usando la Canvas API. Ningún dato de tu imagen viaja a internet.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Cuántos colores debería extraer?</h3>
+          <p>Para fotografía de naturaleza o paisajes, 5 a 7 colores suele dar paletas equilibradas. Para retratos o imágenes con fondos neutros, 4 a 6 es suficiente. Imágenes muy coloridas como mercados o festivales pueden necesitar 8 a 12 para capturar toda su riqueza.</p>
+        </div>
+        <div class="faq-item">
+          <h3>¿Puedo usar los colores en Lightroom directamente?</h3>
+          <p>Los valores HEX y RGB no se importan directamente a Lightroom, pero puedes usarlos como referencia visual para ajustar los sliders de HSL y tono. Herramientas como Adobe Color te permiten pegar códigos HEX y exportar muestras compatibles con el ecosistema de Adobe.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── Footer ─── -->
+  <footer class="page-footer">
+    <p>Desarrollado por <a href="https://loui61.com" target="_blank">loui61.com</a></p>
+    <p>Procesado localmente · sin servidores · <a href="https://loui61.com/contacto" target="_blank">Contacto</a></p>
+  </footer>
+
+</div>
+
+<script>
+  /* ══════════════════════════════════════
+     REFERENCIAS DOM
+  ══════════════════════════════════════ */
+  const dropZone      = document.getElementById('drop-zone');
+  const fileInput     = document.getElementById('file-input');
+  const previewWrap   = document.getElementById('preview-wrap');
+  const previewImg    = document.getElementById('preview-img');
+  const fileNameLbl   = document.getElementById('file-name-label');
+  const fileSizeLbl   = document.getElementById('file-size-label');
+  const controlsWrap  = document.getElementById('controls-wrap');
+  const colorCount    = document.getElementById('color-count');
+  const countDisplay  = document.getElementById('count-display');
+  const analyzeBtn    = document.getElementById('analyze-btn');
+  const changeBtn     = document.getElementById('change-btn');
+  const errorBox      = document.getElementById('error-box');
+  const results       = document.getElementById('results');
+  const retryBtn      = document.getElementById('retry-btn');
+  const copyAllBtn    = document.getElementById('copy-all-btn');
+  const hiddenCanvas  = document.getElementById('hidden-canvas');
+  const gradientStrip = document.getElementById('gradient-strip');
+  const swatchesGrid  = document.getElementById('swatches-grid');
+  const toast         = document.getElementById('toast');
+
+  let currentFile = null;
+  let lastPalette = [];
+
+  /* ══════════════════════════════════════
+     SLIDER
+  ══════════════════════════════════════ */
+  colorCount.addEventListener('input', () => {
+    countDisplay.textContent = colorCount.value;
+  });
+
+  /* ══════════════════════════════════════
+     DRAG & DROP
+  ══════════════════════════════════════ */
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+  changeBtn.addEventListener('click', () => fileInput.click());
+
+  /* ══════════════════════════════════════
+     CARGAR ARCHIVO
+  ══════════════════════════════════════ */
+  function loadFile(file) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      showError('Formato no soportado. Usa JPG, PNG o WEBP.');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      showError('El archivo supera los 20 MB. Usa una imagen más pequeña.');
+      return;
+    }
+
+    currentFile = file;
+    hideError();
+    hideResults();
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      previewImg.src = ev.target.result;
+      dropZone.style.display = 'none';
+      previewWrap.classList.add('visible');
+      controlsWrap.classList.add('visible');
+      analyzeBtn.classList.add('visible');
+    };
+
+    fileNameLbl.textContent = file.name;
+    fileSizeLbl.textContent = formatBytes(file.size);
+    reader.readAsDataURL(file);
+  }
+
+  function formatBytes(b) {
+    if (b < 1024)        return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  /* ══════════════════════════════════════
+     ANALIZAR
+  ══════════════════════════════════════ */
+  analyzeBtn.addEventListener('click', () => {
+    if (!currentFile) return;
+    setLoading(true);
+    hideError();
+    hideResults();
+
+    // Pequeño delay para que el UI muestre el estado loading
+    setTimeout(() => {
+      try {
+        const k = parseInt(colorCount.value, 10);
+        const palette = extractPalette(previewImg, k);
+        lastPalette = palette;
+        renderPalette(palette);
+      } catch (err) {
+        showError('No se pudo procesar la imagen: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    }, 80);
+  });
+
+  /* ══════════════════════════════════════
+     EXTRACCIÓN DE PALETA — K-MEANS
+  ══════════════════════════════════════ */
+  function extractPalette(imgEl, k) {
+    const ctx  = hiddenCanvas.getContext('2d');
+    const MAX  = 200; // Resize para velocidad
+    const ratio = Math.min(MAX / imgEl.naturalWidth, MAX / imgEl.naturalHeight, 1);
+    const w    = Math.round(imgEl.naturalWidth  * ratio);
+    const h    = Math.round(imgEl.naturalHeight * ratio);
+
+    hiddenCanvas.width  = w;
+    hiddenCanvas.height = h;
+    ctx.drawImage(imgEl, 0, 0, w, h);
+
+    const data   = ctx.getImageData(0, 0, w, h).data;
+    const pixels = [];
+
+    // Samplear cada 2 píxeles para velocidad
+    for (let i = 0; i < data.length; i += 4 * 2) {
+      const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+      if (a < 128) continue; // Ignorar transparentes
+      pixels.push([r, g, b]);
+    }
+
+    if (pixels.length < k) throw new Error('Imagen muy pequeña o transparente.');
+
+    const clusters = kmeans(pixels, k, 20);
+
+    // Calcular porcentajes
+    const total = clusters.reduce((sum, c) => sum + c.count, 0);
+    const palette = clusters
+      .map(c => ({
+        r: Math.round(c.center[0]),
+        g: Math.round(c.center[1]),
+        b: Math.round(c.center[2]),
+        pct: Math.round((c.count / total) * 100)
+      }))
+      .sort((a, b) => b.pct - a.pct);
+
+    // Normalizar porcentajes a 100
+    const sum = palette.reduce((s, c) => s + c.pct, 0);
+    if (sum !== 100) palette[0].pct += 100 - sum;
+
+    return palette;
+  }
+
+  /* K-means simple */
+  function kmeans(pixels, k, maxIter) {
+    // Inicializar centroides con k-means++ simplificado
+    let centers = [pixels[Math.floor(Math.random() * pixels.length)]];
+    while (centers.length < k) {
+      const dists = pixels.map(p => Math.min(...centers.map(c => dist2(p, c))));
+      const total = dists.reduce((a, b) => a + b, 0);
+      let r = Math.random() * total;
+      for (let i = 0; i < pixels.length; i++) {
+        r -= dists[i];
+        if (r <= 0) { centers.push(pixels[i]); break; }
+      }
+    }
+
+    let assignments = new Array(pixels.length).fill(0);
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      // Asignar
+      let changed = false;
+      for (let i = 0; i < pixels.length; i++) {
+        let best = 0, bestD = Infinity;
+        for (let j = 0; j < k; j++) {
+          const d = dist2(pixels[i], centers[j]);
+          if (d < bestD) { bestD = d; best = j; }
+        }
+        if (assignments[i] !== best) { assignments[i] = best; changed = true; }
+      }
+      if (!changed) break;
+
+      // Actualizar centros
+      const sums  = Array.from({ length: k }, () => [0,0,0]);
+      const counts = new Array(k).fill(0);
+      for (let i = 0; i < pixels.length; i++) {
+        const j = assignments[i];
+        sums[j][0] += pixels[i][0];
+        sums[j][1] += pixels[i][1];
+        sums[j][2] += pixels[i][2];
+        counts[j]++;
+      }
+      centers = sums.map((s, j) => counts[j] > 0
+        ? [s[0]/counts[j], s[1]/counts[j], s[2]/counts[j]]
+        : centers[j]
+      );
+    }
+
+    return centers.map((c, j) => ({
+      center: c,
+      count:  assignments.filter(a => a === j).length
+    })).filter(c => c.count > 0);
+  }
+
+  function dist2(a, b) {
+    return (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2;
+  }
+
+  /* ══════════════════════════════════════
+     RENDER DE PALETA
+  ══════════════════════════════════════ */
+  function renderPalette(palette) {
+    // Gradiente superior
+    const gCtx = gradientStrip.getContext('2d');
+    gradientStrip.width = gradientStrip.offsetWidth || 680;
+    const grad = gCtx.createLinearGradient(0, 0, gradientStrip.width, 0);
+
+    let pos = 0;
+    palette.forEach((c, i) => {
+      grad.addColorStop(pos, `rgb(${c.r},${c.g},${c.b})`);
+      pos += c.pct / 100;
+      if (i < palette.length - 1) grad.addColorStop(pos, `rgb(${c.r},${c.g},${c.b})`);
+    });
+    grad.addColorStop(1, `rgb(${palette[palette.length-1].r},${palette[palette.length-1].g},${palette[palette.length-1].b})`);
+    gCtx.fillStyle = grad;
+    gCtx.fillRect(0, 0, gradientStrip.width, 64);
+
+    // Swatches
+    swatchesGrid.innerHTML = '';
+
+    palette.forEach((c, idx) => {
+      const hex = toHex(c.r, c.g, c.b);
+      const row = document.createElement('div');
+      row.className = 'color-row';
+      row.style.animationDelay = (idx * 60) + 'ms';
+
+      // Luminosidad para texto sobre el swatch
+      const lum = 0.299*c.r + 0.587*c.g + 0.114*c.b;
+      const hintColor = lum > 140 ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)';
+
+      row.innerHTML = `
+        <div class="swatch-box" style="background:rgb(${c.r},${c.g},${c.b})" data-hex="${hex}" title="Clic para copiar ${hex}">
+          <div class="copy-hint" style="color:${hintColor}">Copiar</div>
+        </div>
+        <div class="color-info">
+          <div class="color-codes">
+            <span class="hex-val" data-hex="${hex}">${hex}</span>
+            <span class="rgb-val">rgb(${c.r}, ${c.g}, ${c.b})</span>
+          </div>
+          <div class="pct-row">
+            <div class="pct-bar-track">
+              <div class="pct-bar-fill" style="background:rgb(${c.r},${c.g},${c.b})" data-pct="${c.pct}"></div>
+            </div>
+            <span class="pct-label">${c.pct}%</span>
+          </div>
+        </div>
+      `;
+
+      swatchesGrid.appendChild(row);
+
+      // Click en swatch
+      row.querySelector('.swatch-box').addEventListener('click', () => copyText(hex));
+      row.querySelector('.hex-val').addEventListener('click', function() {
+        copyText(hex);
+        this.classList.add('copied');
+        setTimeout(() => this.classList.remove('copied'), 1200);
+      });
+
+      // Animar barra con delay
+      setTimeout(() => {
+        const fill = row.querySelector('.pct-bar-fill');
+        if (fill) fill.style.width = c.pct + '%';
+      }, 100 + idx * 60);
+    });
+
+    results.classList.add('visible');
+    setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 120);
+  }
+
+  /* ══════════════════════════════════════
+     UTILIDADES
+  ══════════════════════════════════════ */
+  function toHex(r, g, b) {
+    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0').toUpperCase()).join('');
+  }
+
+  function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copiado: ' + text));
+  }
+
+  copyAllBtn.addEventListener('click', () => {
+    const hexList = lastPalette.map(c => toHex(c.r, c.g, c.b)).join(', ');
+    navigator.clipboard.writeText(hexList).then(() => showToast('Todos los HEX copiados'));
+  });
+
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  /* ── Retry ── */
+  retryBtn.addEventListener('click', () => {
+    hideResults();
+    hideError();
+    previewWrap.classList.remove('visible');
+    controlsWrap.classList.remove('visible');
+    analyzeBtn.classList.remove('visible');
+    dropZone.style.display = '';
+    currentFile = null;
+    fileInput.value = '';
+    lastPalette = [];
+  });
+
+  /* ── Estado de carga ── */
+  function setLoading(on) {
+    analyzeBtn.disabled = on;
+    analyzeBtn.classList.toggle('loading', on);
+    analyzeBtn.querySelector('.btn-label').textContent = on ? 'Extrayendo colores...' : 'Extraer paleta';
+  }
+
+  function showError(msg) { errorBox.textContent = msg; errorBox.classList.add('visible'); }
+  function hideError()    { errorBox.classList.remove('visible'); }
+  function hideResults()  { results.classList.remove('visible'); }
+</script>
+</body>
+</html>
